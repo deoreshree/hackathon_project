@@ -77,7 +77,9 @@ def test_full_pipeline_returns_evidence_and_verdict(full_pipeline: RAGPipeline) 
     # Explanation is produced by the rule-based fallback (NoOp provider).
     assert result.explanation is not None
     assert result.explanation.text
-    # Citations come from real retrieved URLs only.
+    # Citations are built from the retrieved evidence (Step 10 fix: sources
+    # must be populated in real pipeline runs, not just in tests).
+    assert result.citations
     assert all(citation.url.startswith("https://") for citation in result.citations)
 
 

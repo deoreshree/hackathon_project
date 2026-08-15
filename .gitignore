@@ -23,12 +23,13 @@ env/
 .coverage
 htmlcov/
 
-# IDE / OS
+# IDE / OS / tooling
 .vscode/
 .idea/
 *.swp
 Thumbs.db
 Desktop.ini
+.freebuff/
 
 # Local data / caches
 *.log

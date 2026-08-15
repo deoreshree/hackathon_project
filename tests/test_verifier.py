@@ -34,6 +34,7 @@ from rag.verifier import (
     Verifier,
     _classify_stance,
     _compute_weight,
+    _count_keyword_hits,
     _determine_status,
 )
 
@@ -361,6 +362,24 @@ def test_classify_stance_contradicting_text() -> None:
 def test_classify_stance_neutral_text() -> None:
     item = _make_item("Scientists gathered in Geneva to attend the annual symposium.")
     assert _classify_stance(item) is EvidenceStance.NEUTRAL
+
+
+def test_count_keyword_hits_uses_word_boundaries() -> None:
+    """Substrings must not count as keyword hits (e.g. 'no' in 'nonsmokers')."""
+    assert _count_keyword_hits("nonsmokers have a higher risk", frozenset({"no"})) == 0
+    assert _count_keyword_hits("this claim is false", frozenset({"false"})) == 1
+    assert _count_keyword_hits("investigators found no evidence", frozenset({"no evidence"})) == 1
+
+
+def test_classify_stance_avoids_substring_false_positives() -> None:
+    """Word-boundary matching plus inflected keywords: a clearly supporting
+    passage must not be flipped into a contradiction by 'no' inside words."""
+    item = _make_item(
+        "Lung cancer is the leading cause of cancer death. The data supporting "
+        "this relationship are compelling. Compared with nonsmokers, smokers "
+        "have a much higher risk of developing cancer."
+    )
+    assert _classify_stance(item) is EvidenceStance.SUPPORTING
 
 
 def test_classify_stance_empty_text_is_neutral() -> None:

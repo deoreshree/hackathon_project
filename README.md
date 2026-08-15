@@ -1,12 +1,183 @@
-# AI-Powered Fake News Detector — RAG Module (Member 2)
+# AI-Powered Fake News Detector
 
+A hackathon-ready fact-checking application. Users submit a news claim; the system
+retrieves real web evidence, extracts supporting/contradicting/neutral passages,
+classifies them, and produces a **grounded verdict and LLM explanation** backed by
+citations. A chat interface wraps the whole pipeline for a live demo.
 
-Retrieval-Augmented Generation (RAG) and evidence layer for the hackathon project.
-This module retrieves real sources, extracts supporting/contradicting evidence,
-returns verification status, and produces grounded LLM explanations.
+## Overview
 
-**Scope:** RAG, evidence, citations, explainer, fact-check chatbot API hooks.  
-**Out of scope:** Frontend, primary ML fake-news classifier.
+The application answers one question per claim: *is there reliable, retrievable
+evidence that supports, contradicts, or is neutral toward this claim?* It never
+invents evidence — when evidence is insufficient it says **UNVERIFIED** instead
+of guessing. The pipeline is deterministic and testable offline (no API keys
+required for tests), and can be upgraded with live web-search and LLM keys for
+the demo.
+
+## Key Features
+
+- **Claim verification** — verdicts: `SUPPORTED`, `CONTRADICTED`, `MIXED`, `UNVERIFIED`
+- **Web / evidence retrieval** — Tavily, Serper, or offline fixture providers
+- **Evidence extraction** — relevant passages extracted from real retrieved content
+- **Supporting / contradicting / neutral classification** — deterministic, keyword-based
+- **RAG pipeline** — retrieval → extraction → verification → explanation → citations
+- **Grounded LLM explanation** — evidence-only prompts + output validation (no hallucinations)
+- **Fact-checking chatbot** — chat UI with follow-up support (`Why?`, `What evidence?`)
+- **API / backend** — FastAPI with OpenAPI docs
+- **Security** — input validation, safe error handling, rate limiting, prompt-injection guards
+- **Automated testing** — offline, mocked, deterministic (156 tests)
+
+## Architecture
+
+```
+User
+  → Chatbot (static/ UI)
+    → FastAPI backend (backend/main.py)
+      → RAG Pipeline (rag/rag_pipeline.py)
+        → Retrieval (rag/retriever.py + providers)
+        → Evidence extraction (rag/evidence.py)
+        → Evidence classification (rag/verifier.py)
+        → Verification status (rag/verifier.py)
+        → Grounded LLM explanation (rag/explainer.py)
+        → Source citations (rag/sources.py)
+      → API response (backend/schemas.py, response_builder.py)
+    → Chatbot response (backend/chat_service.py)
+```
+
+## Tech Stack
+
+- **Python 3** (type-hinted, `from __future__ import annotations`)
+- **FastAPI + Uvicorn** — REST API and server
+- **Pydantic v2** — request/response validation
+- **httpx** — outbound calls to search/LLM providers
+- **python-dotenv** — environment configuration
+- **pytest** — automated tests
+- **Vanilla HTML/CSS/JS** — chatbot demo UI (no frontend framework)
+
+## Project Structure
+
+```
+backend/
+├── main.py            # FastAPI app: routes, CORS, error handling, rate limiting
+├── schemas.py         # Pydantic request/response models + input validation
+├── chat_service.py    # Chatbot sessions + follow-up logic
+├── response_builder.py# RAG output → API response mapping
+└── rate_limit.py      # Lightweight in-memory rate limiter
+rag/
+├── models.py          # Pydantic data models (RetrievedDocument, EvidenceItem)
+├── providers.py       # Search backends (Tavily, Serper, empty, fixture)
+├── retriever.py       # Retrieval entry point
+├── evidence.py        # Evidence extraction
+├── verifier.py        # Stance classification + verification status
+├── explainer.py       # LLM + rule-based explanations
+├── prompts.py         # Prompt templates + injection guardrails
+├── sources.py         # Source config, ranking, citations
+└── rag_pipeline.py    # End-to-end orchestration
+static/
+├── index.html         # Chat UI
+├── app.js             # Chat client logic
+└── style.css          # Chat UI styling
+tests/                 # pytest suite (offline, mocked)
+requirements.txt
+.env.example           # Placeholder environment template (no real keys)
+```
+
+## Installation
+
+From a terminal in the project root:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1   # Windows PowerShell
+pip install -r requirements.txt
+copy .env.example .env            # then fill in your API keys (optional)
+```
+
+Linux/macOS activation: `source .venv/bin/activate` and `cp .env.example .env`.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in values. **Never commit `.env`** — it is
+Git-ignored. Placeholder-only values live in `.env.example`:
+
+| Variable | Purpose |
+|----------|---------|
+| `RETRIEVAL_PROVIDER` | `tavily`, `serper`, or `empty` (auto-detected if unset) |
+| `TAVILY_API_KEY` | Enables live web search via Tavily |
+| `SERPER_API_KEY` | Enables live web search via Serper |
+| `OPENAI_API_KEY` | Enables LLM explanations (OpenAI) |
+| `GROQ_API_KEY` | Enables LLM explanations (Groq, free tier) |
+| `RATE_LIMIT_ENABLED` / `RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS` | Rate limiting (default 120 req/min/IP) |
+| `CORS_ORIGINS` | Comma-separated allowed origins (default `*`) |
+| `LOG_LEVEL` | Logging level |
+
+With no keys configured the app still runs: retrieval returns no results and
+explanations use the deterministic rule-based fallback (everything becomes
+`UNVERIFIED`). Add keys for the full live demo.
+
+## Running the Application
+
+```powershell
+uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Then open:
+
+- Chat UI: http://127.0.0.1:8000/chat
+- API docs (Swagger/OpenAPI): http://127.0.0.1:8000/docs
+
+## API Documentation
+
+FastAPI auto-generates interactive docs at **`/docs`** (Swagger UI) and the raw
+OpenAPI schema at **`/openapi.json`**.
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/health` | Health check |
+| `GET` | `/` | API info |
+| `GET` | `/chat` | Chat UI (HTML) |
+| `POST` | `/api/fact-check` | Direct fact-check of a `claim` |
+| `POST` | `/chat` | Chatbot fact-check (`message` + optional `session_id`) |
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/fact-check \
+  -H "Content-Type: application/json" \
+  -d '{"claim": "COVID vaccines contain microchips for tracking people."}'
+```
+
+## Running Tests
+
+The suite runs fully offline — external services are mocked, no API keys needed:
+
+```powershell
+pytest -q
+```
+
+## Example
+
+Claim: **"COVID vaccines contain microchips for tracking people."**  
+Verdict: **CONTRADICTED** — retrieved evidence (CNBC, FactCheck.org, Mayo Clinic)
+explicitly debunks the microchip claim. The response includes confidence, a
+grounded explanation, contradicting evidence passages, and source links.
+
+## Security
+
+Implemented in Step 9:
+
+- **Input validation** — Pydantic schemas strip and reject blank input; caps of
+  5,000 chars for claims/messages, 128 for session ids; invalid JSON, wrong
+  types, and missing fields return `422`.
+- **Safe error handling** — internal exceptions are logged but never exposed;
+  clients get generic `500` messages; no stack traces, paths, or keys leak.
+- **Secret management** — API keys come only from `.env` (Git-ignored);
+  `.env.example` holds placeholders; the frontend never sees keys.
+- **Prompt-injection protection** — claims and retrieved evidence are labeled
+  as untrusted DATA; the system prompt forbids revealing instructions, keys,
+  or secrets; LLM source URLs are validated against real evidence.
+- **Rate limiting** — lightweight in-memory limiter (120 req/min/IP) returns `429`.
+- **CORS** — configurable origins via `CORS_ORIGINS`; credentials disabled.
 
 ## Safety rules
 
@@ -14,22 +185,6 @@ returns verification status, and produces grounded LLM explanations.
 - Return `UNVERIFIED` when reliable evidence is insufficient.
 - Treat retrieved webpage content as **data**, not instructions (prompt-injection mitigation).
 - Keep API keys in `.env` (see `.env.example`).
-
-## Project layout
-
-```
-rag/
-├── models.py         # Pydantic data models (RetrievedDocument, etc.)
-├── providers.py      # Pluggable search backends (Tavily, Serper, empty, fixture)
-├── retriever.py      # Retriever entry point
-├── evidence.py       # Extract & label supporting vs contradicting snippets
-├── verifier.py       # Aggregate evidence into verification status
-├── explainer.py      # LLM explanations grounded in evidence
-├── prompts.py        # Shared prompt templates & guardrails
-├── sources.py        # Source config, priority ranking, citations
-└── rag_pipeline.py   # Orchestration + integration-ready response model
-tests/                # Unit tests
-```
 
 ## Setup
 
@@ -553,3 +708,35 @@ pytest tests/test_security.py -v
 | Backend/API integration (Step 7) | ✅ Implemented |
 | Fact-checking chatbot (Step 8) | ✅ Implemented |
 | Security + Testing (Step 9) | ✅ Implemented |
+| Final demo & release (Step 10) | ✅ Implemented |
+
+---
+
+## Limitations
+
+This is a **hackathon demo, not a production fact-checker**. Please note:
+
+- **Dependence on external evidence sources** — verdicts are only as good as the
+  search results available at query time. If retrieval fails or returns nothing,
+  the claim is marked `UNVERIFIED`.
+- **LLM uncertainty** — LLM explanations can be imperfect. They are constrained
+  to the supplied evidence, and fall back to deterministic rule-based text when
+  the LLM is unavailable, but they are not a guarantee of truth.
+- **Retrieval quality** — snippet-based retrieval can miss relevant sources or
+  rank low-quality pages highly; source authority weighting is heuristic.
+- **API availability** — live search/LLM features depend on external API keys
+  and provider uptime. Without keys, the app runs in degraded (offline) mode.
+- **No guaranteed truth in ambiguous cases** — `MIXED` and `UNVERIFIED` verdicts
+  mean the system cannot confidently resolve the claim. Do not claim 100%
+  accuracy; always verify important claims against primary sources.
+- **In-memory rate limiting** — resets on restart and is single-process only.
+
+## Future Improvements
+
+- Train/apply a dedicated ML classifier for stance detection to replace the
+  keyword heuristic.
+- Add caching for repeated claims and persistent rate limiting.
+- Support additional retrieval and LLM providers (e.g. DeepSeek, Mistral,
+  Anthropic) through the existing provider interfaces.
+- Add user authentication and per-user usage quotas.
+- Improve evidence ranking with semantic embeddings (e.g. sentence-transformers).

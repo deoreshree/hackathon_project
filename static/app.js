@@ -68,13 +68,39 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function verdictClass(verdict) {
+  switch (String(verdict).toUpperCase()) {
+    case "SUPPORTED":
+      return "verdict-supported";
+    case "CONTRADICTED":
+      return "verdict-contradicted";
+    case "MIXED":
+      return "verdict-mixed";
+    default:
+      return "verdict-unverified";
+  }
+}
+
+function verdictLabel(verdict) {
+  const labels = {
+    SUPPORTED: "Supported by evidence",
+    CONTRADICTED: "Contradicted by evidence",
+    MIXED: "Mixed evidence",
+    UNVERIFIED: "Insufficient evidence",
+  };
+  return labels[String(verdict).toUpperCase()] || String(verdict);
+}
+
 function renderAssistantResponse(data) {
+  const badgeClass = verdictClass(data.verdict);
   return `
-    <div class="verdict">${escapeHtml(data.verdict)}</div>
-    <div>${escapeHtml(data.answer)}</div>
+    <div class="verdict ${badgeClass}" title="${escapeHtml(verdictLabel(data.verdict))}">${escapeHtml(
+    verdictLabel(data.verdict)
+  )}</div>
+    <div class="answer">${escapeHtml(data.answer)}</div>
     <div class="meta">Confidence: ${Number(data.confidence).toFixed(2)}${
-      data.is_follow_up ? " · Follow-up response" : ""
-    }</div>
+    data.is_follow_up ? " · Follow-up response" : ""
+  }</div>
     <div class="section">
       <h4>Supporting Evidence</h4>
       ${renderEvidenceList(data.supporting_evidence || [])}
@@ -84,10 +110,23 @@ function renderAssistantResponse(data) {
       ${renderEvidenceList(data.contradicting_evidence || [])}
     </div>
     <div class="section">
+      <h4>Neutral Evidence</h4>
+      ${renderEvidenceList(data.neutral_evidence || [])}
+    </div>
+    <div class="section">
       <h4>Sources</h4>
       ${renderSources(data.sources || [])}
     </div>
   `;
+}
+
+function renderErrorDetail(detail) {
+  if (!detail) return "The backend returned an error.";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail.length) {
+    return detail.map((item) => item.message || "Invalid value").join("; ");
+  }
+  return JSON.stringify(detail);
 }
 
 async function sendMessage(message) {
@@ -107,8 +146,7 @@ async function sendMessage(message) {
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
-      const detail = data && data.detail ? data.detail : "The backend returned an error.";
-      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+      throw new Error(renderErrorDetail(data && data.detail));
     }
 
     if (!data || !data.verdict || !data.answer) {
@@ -124,6 +162,23 @@ async function sendMessage(message) {
   }
 }
 
+function newChat() {
+  sessionId = null;
+  chatArea.innerHTML = "";
+  clearError();
+  messageInput.value = "";
+  messageInput.focus();
+}
+
+document.getElementById("new-chat-button").addEventListener("click", newChat);
+
+document.querySelectorAll(".example-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    messageInput.value = chip.dataset.claim || "";
+    chatForm.requestSubmit();
+  });
+});
+
 chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -133,7 +188,7 @@ chatForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  appendMessage("user", `<div>${escapeHtml(message)}</div>`);
+  appendMessage("user", `<div class="user-text">${escapeHtml(message)}</div>`);
   messageInput.value = "";
   await sendMessage(message);
 });

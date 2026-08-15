@@ -81,6 +81,11 @@ _NEGATION_WORDS: frozenset[str] = frozenset(
         "inaccurate",
         "unsubstantiated",
         "refuted",
+        "refutes",
+        "refuting",
+        "debunks",
+        "debunking",
+        "falsely",
         "denied",
         "deny",
         "dispute",
@@ -126,6 +131,10 @@ _SUPPORTING_WORDS: frozenset[str] = frozenset(
         "supports",
         "support",
         "supported",
+        "supporting",
+        "confirming",
+        "validated",
+        "validates",
         "consistent",
         "indeed",
         "proven",
@@ -332,11 +341,14 @@ class Verifier:
 def _count_keyword_hits(text_lower: str, keyword_set: frozenset[str]) -> int:
     """Count how many keywords from *keyword_set* appear in *text_lower*.
 
-    Supports both unigrams and short multi-word phrases.
+    Supports both unigrams and short multi-word phrases.  Matching is
+    word-boundary aware so that, e.g., ``"no"`` does not match inside
+    ``"nonsmokers"`` or ``"support"`` inside ``"supporting"`` — this avoids
+    flipping clearly-supporting passages into false contradictions.
     """
     count = 0
     for kw in keyword_set:
-        if kw in text_lower:
+        if re.search(rf"\b{re.escape(kw)}\b", text_lower):
             count += 1
     return count
 

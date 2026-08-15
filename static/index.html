@@ -9,26 +9,39 @@
 <body>
   <div class="app">
     <header class="header">
-      <h1>Fact-Checking Chatbot</h1>
-      <p>Enter a news claim to retrieve evidence and get a grounded verdict.</p>
+      <div class="header-row">
+        <div>
+          <h1>Fact-Checking Chatbot</h1>
+          <p>Enter a news claim to retrieve evidence and get a grounded verdict.</p>
+        </div>
+        <button id="new-chat-button" class="secondary-button" type="button" title="Clear the conversation">New chat</button>
+      </div>
     </header>
 
     <main id="chat-area" class="chat-area" aria-live="polite"></main>
 
     <section id="error-banner" class="error-banner hidden" role="alert"></section>
 
+    <section class="suggestions" aria-label="Example claims">
+      <span class="suggestions-label">Try an example:</span>
+      <button type="button" class="example-chip" data-claim="COVID vaccines contain microchips for tracking people.">Vaccines contain microchips</button>
+      <button type="button" class="example-chip" data-claim="India won the 2026 FIFA World Cup.">India won the 2026 World Cup</button>
+      <button type="button" class="example-chip" data-claim="The Great Wall of China is visible from space with the naked eye.">Great Wall visible from space</button>
+      <button type="button" class="example-chip" data-claim="Elon Musk announced plans to build a colony on Mars by 2029.">Musk Mars colony by 2029</button>
+    </section>
+
     <form id="chat-form" class="chat-form">
       <textarea
         id="message-input"
         rows="2"
         maxlength="5000"
-        placeholder="Example: India won the 2026 FIFA World Cup."
+        placeholder="Type a claim to fact-check, e.g. 'The sky is blue.'"
         required
       ></textarea>
       <button id="send-button" type="submit">Send</button>
     </form>
 
-    <div id="loading-indicator" class="loading hidden">Checking claim...</div>
+    <div id="loading-indicator" class="loading hidden">Fact-checking… retrieving evidence and verifying the claim.</div>
   </div>
 
   <script src="/static/app.js"></script>

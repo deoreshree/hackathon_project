@@ -3,8 +3,10 @@
 import pytest
 
 from rag.models import RetrievedDocument
+from rag.models import EvidenceItem
 from rag.sources import (
     build_citations,
+    build_citations_from_items,
     extract_domain,
     match_source,
     normalize_url,
@@ -65,3 +67,56 @@ def test_rank_documents_does_not_mark_unknown_as_authoritative() -> None:
     )
     ranked = rank_documents([doc])
     assert ranked[0].is_authoritative is False
+
+
+def test_build_citations_from_evidence_items() -> None:
+    items = [
+        EvidenceItem(
+            text="Passage one.",
+            source="Snopes",
+            url="https://www.snopes.com/fact-check/example",
+            title="Snopes Check",
+            relevance_score=0.8,
+        ),
+        EvidenceItem(
+            text="Passage two (duplicate URL).",
+            source="Snopes",
+            url="https://www.snopes.com/fact-check/example",
+            title="Snopes Check",
+            relevance_score=0.6,
+        ),
+    ]
+
+    citations = build_citations_from_items(items)
+
+    assert len(citations) == 1
+    assert citations[0].url == "https://www.snopes.com/fact-check/example"
+    assert citations[0].title == "Snopes Check"
+    assert citations[0].publisher == "Snopes"
+
+
+def test_build_citations_from_items_skips_invalid_urls() -> None:
+    items = [
+        RetrievedDocument(
+            title="Bad",
+            url="not-a-url",
+            source="x",
+            content="Content.",
+        ),
+        RetrievedDocument(
+            title="Good",
+            url="https://example.com/article",
+            source="example.com",
+            content="Content.",
+            relevance_score=0.5,
+        ),
+    ]
+
+    citations = build_citations_from_items(items)
+
+    assert len(citations) == 1
+    assert citations[0].url == "https://example.com/article"
+
+
+def test_build_citations_from_items_empty() -> None:
+    assert build_citations_from_items([]) == []
