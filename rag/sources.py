@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import urlparse
 
 from rag.models import RetrievedDocument
@@ -139,5 +140,34 @@ def build_citations(urls: list[str], titles: list[str | None] | None = None) -> 
         seen.add(normalized)
         title = titles[index] if titles and index < len(titles) else None
         citations.append(SourceCitation(url=normalized, title=title))
+
+    return citations
+
+
+def build_citations_from_items(items: list[Any]) -> list[SourceCitation]:
+    """Build deduplicated citations from objects exposing url/title/source.
+
+    Accepts ``EvidenceItem`` or ``RetrievedDocument`` instances — the objects
+    actually produced by the RAG pipeline — so callers do not need to extract
+    URLs manually.  Never invents a source: items without a usable URL are
+    skipped and duplicate URLs are collapsed.
+    """
+    seen: set[str] = set()
+    citations: list[SourceCitation] = []
+
+    for item in items:
+        url = (getattr(item, "url", None) or "").strip()
+        if not url:
+            continue
+        try:
+            normalized = normalize_url(url)
+        except ValueError:
+            continue
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        title = (getattr(item, "title", None) or "").strip() or None
+        publisher = (getattr(item, "source", None) or "").strip() or None
+        citations.append(SourceCitation(url=normalized, title=title, publisher=publisher))
 
     return citations

@@ -179,3 +179,39 @@ def test_chat_page_served(client: TestClient) -> None:
     response = client.get("/chat")
     assert response.status_code == 200
     assert "Fact-Checking Chatbot" in response.text
+
+
+def test_chat_long_message_returns_422(client: TestClient) -> None:
+    response = client.post("/chat", json={"message": "a" * 5001})
+    assert response.status_code == 422
+
+
+def test_chat_invalid_request_missing_message_returns_422(client: TestClient) -> None:
+    response = client.post("/chat", json={})
+    assert response.status_code == 422
+
+
+def test_chat_invalid_request_wrong_type_returns_422(client: TestClient) -> None:
+    response = client.post("/chat", json={"message": 42})
+    assert response.status_code == 422
+
+
+def test_chat_invalid_json_returns_422(client: TestClient) -> None:
+    response = client.post(
+        "/chat",
+        content="{malformed",
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+
+
+def test_chat_sources_returned_when_available(
+    client: TestClient,
+    sample_rag_result: RAGResponse,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(pipeline, "run", MagicMock(return_value=sample_rag_result))
+
+    data = client.post("/chat", json={"message": "India won the 2026 FIFA World Cup."}).json()
+    assert data["sources"]
+    assert all(source["url"].startswith("https://") for source in data["sources"])

@@ -15,8 +15,11 @@ from typing import Any
 
 from rag.evidence import EvidenceExtractor
 from rag.explainer import Explainer, Explanation
+
+# Maximum claim length accepted by the pipeline (characters).
+MAX_CLAIM_LENGTH = 5000
 from rag.retriever import Retriever
-from rag.sources import SourceCitation, build_citations
+from rag.sources import SourceCitation, build_citations, build_citations_from_items
 from rag.verifier import VerificationResult, Verifier
 
 
@@ -62,6 +65,11 @@ class RAGPipeline:
 
         if not claim:
             raise ValueError("claim cannot be empty")
+
+        if len(claim) > MAX_CLAIM_LENGTH:
+            raise ValueError(
+                f"claim is too long (max {MAX_CLAIM_LENGTH} characters)"
+            )
 
         # ---------------------------------------------------------
         # STEP 2: RETRIEVAL
@@ -278,26 +286,24 @@ class RAGPipeline:
     ) -> list[SourceCitation]:
         """Build source citations for the final response."""
 
-        # Prefer evidence because it represents the sources
-        # actually used during verification.
-        try:
-            citations = build_citations(evidence)
+        # Evidence items and retrieved documents already expose url/title/source
+        # attributes — build citations directly from them (never invent URLs).
+        for items in (evidence, retrieved_results):
+            if not items:
+                continue
+            if all(hasattr(item, "url") for item in items):
+                try:
+                    return build_citations_from_items(list(items))
+                except (TypeError, AttributeError, ValueError):
+                    continue
 
-            if citations is not None:
-                return list(citations)
-
-        except (TypeError, AttributeError):
-            pass
-
-        # Fall back to retrieved sources if citation building
-        # expects the retrieval result.
-        try:
-            citations = build_citations(retrieved_results)
-
-            if citations is not None:
-                return list(citations)
-
-        except (TypeError, AttributeError):
-            pass
+        # Fall back to the legacy list-of-strings path for custom inputs.
+        for urls in (evidence, retrieved_results):
+            try:
+                citations = build_citations(list(urls))
+                if citations is not None:
+                    return list(citations)
+            except (TypeError, AttributeError, ValueError):
+                continue
 
         return []

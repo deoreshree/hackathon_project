@@ -436,6 +436,111 @@ A minimal demo UI lives in `static/`:
 It connects to `POST /chat`, shows verdict, evidence, sources, loading state, and errors.
 No API keys are exposed in frontend code.
 
+## Step 9 — Security + Testing
+
+Security hardening and a comprehensive automated test suite covering Steps 1–9.
+
+### Input validation
+
+All user input is validated with the existing Pydantic schemas (`backend/schemas.py`):
+
+- `claim` / `message` must be non-empty after stripping (whitespace-only input → 422).
+- `claim` and `message` are capped at **5,000 characters**.
+- `session_id` is capped at **128 characters** and stripped.
+- The RAG pipeline (`rag/rag_pipeline.py`) independently rejects empty, non-string,
+  and over-long (`> 5000` chars) claims, so direct pipeline calls are protected too.
+- Invalid JSON, missing fields, and wrong data types return **HTTP 422** with a
+  sanitized error body that never echoes back raw input values.
+
+### API security
+
+- **Safe error messages:** internal exceptions are logged server-side but clients
+  only ever see generic messages (`"Fact-checking failed due to an internal error…"`).
+  Stack traces, exception types, file paths, and message details are never exposed.
+- **HTTP status codes:** `400` (bad input from the pipeline), `422` (validation),
+  `429` (rate limited), `500` (internal failure).
+- **CORS:** configurable via `CORS_ORIGINS` (comma-separated, default `*`).
+  `allow_credentials` is `False` so `*` remains a valid, safe configuration.
+- A catch-all exception handler guarantees no unhandled error ever leaks internals.
+
+### Secret management
+
+- API keys are read **only** from environment variables / `.env` — never hardcoded.
+- `.env` is ignored by Git (`.gitignore` contains `.env`; `.env.*` except `.env.example`).
+- `.env.example` contains **placeholder values only** (e.g. `TAVILY_API_KEY=your_tavily_api_key_here`).
+- The frontend (`static/`) never receives or displays API keys.
+
+### Prompt injection protection
+
+- Claims and retrieved evidence are treated as **data**, not instructions:
+  `rag/prompts.py` labels them `(DATA)` in the LLM prompt and explicitly forbids
+  following embedded instructions ("ignore previous instructions", "reveal the
+  API key", "disclose the system prompt", …).
+- The system prompt instructs the LLM to never reveal its instructions, API keys,
+  or secrets, and to judge only on supplied evidence.
+- LLM output is validated: source URLs are cross-checked against the real evidence
+  list, so fabricated citations are stripped (`rag/explainer.py`).
+- If the LLM is unavailable or fails, a deterministic rule-based fallback produces
+  the explanation — no external call, no hallucinated content.
+
+### Rate limiting
+
+A lightweight, in-memory sliding-window rate limiter (`backend/rate_limit.py`)
+protects `POST /api/fact-check` and `POST /chat` (default **120 requests/min per IP**).
+No external dependency — suitable for the hackathon demo. Configurable via env:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `RATE_LIMIT_ENABLED` | `true` | Set to `false` to disable |
+| `RATE_LIMIT_MAX_REQUESTS` | `120` | Max requests per window |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Sliding window length |
+
+Exceeded limits return **HTTP 429** with a safe message.
+
+### Error handling
+
+| Case | Response |
+|------|----------|
+| Empty / whitespace-only input | `422` |
+| Missing field / wrong type / invalid JSON | `422` |
+| Over-long input | `422` |
+| Pipeline input error (`ValueError`) | `400` |
+| Rate limit exceeded | `429` |
+| Internal / external service failure | `500` (safe message, no internals) |
+
+External LLM/search failures never surface raw exception details to clients.
+
+### Testing strategy
+
+The suite uses **mocks and fixtures only** — it runs fully offline, deterministically,
+and without any API keys. External services (DeepSeek/OpenAI/Groq LLM, Tavily/Serper
+search, websites, network calls) are never contacted during tests.
+
+Coverage:
+
+| Area | Files |
+|------|-------|
+| API endpoints (health, valid, empty, missing fields, invalid JSON, long input, bad types, internal failure, safe errors, CORS, rate limit) | `tests/test_api.py` |
+| Security (prompt injection, secret exposure, unsafe retrieved content, env handling, rate-limiter unit tests) | `tests/test_security.py` |
+| RAG pipeline end-to-end + failure safety | `tests/test_rag_pipeline.py` |
+| Chatbot (normal, empty, long, invalid, verdict/explanation/evidence/sources, follow-up) | `tests/test_chatbot.py` |
+| Retrieval / evidence / verifier / explainer / sources (Steps 2–5) | `tests/test_retriever.py`, `tests/test_evidence.py`, `tests/test_verifier.py`, `tests/test_explainer.py`, `tests/test_sources.py` |
+
+### How to run tests
+
+```bash
+pytest -q
+```
+
+Or run a single area:
+
+```bash
+pytest tests/test_api.py -v
+pytest tests/test_security.py -v
+```
+
+---
+
 ## Status
 
 | Module | Status |
@@ -447,3 +552,4 @@ No API keys are exposed in frontend code.
 | Full RAG pipeline (Step 6) | ✅ Implemented |
 | Backend/API integration (Step 7) | ✅ Implemented |
 | Fact-checking chatbot (Step 8) | ✅ Implemented |
+| Security + Testing (Step 9) | ✅ Implemented |

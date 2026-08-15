@@ -12,6 +12,9 @@ from backend.schemas import ChatResponse, FactCheckResponse
 from rag.rag_pipeline import RAGPipeline, RAGResponse
 
 MAX_SESSIONS = 200
+MAX_MESSAGE_LENGTH = 5000
+# Cap stored conversation history so sessions cannot grow without bound.
+MAX_HISTORY_MESSAGES = 20
 FOLLOW_UP_PATTERNS = (
     r"^why\b",
     r"^how\b",
@@ -55,9 +58,14 @@ class ChatService:
         normalized_message = message.strip()
         if not normalized_message:
             raise ValueError("Message cannot be empty.")
+        if len(normalized_message) > MAX_MESSAGE_LENGTH:
+            raise ValueError(
+                f"Message is too long (max {MAX_MESSAGE_LENGTH} characters)."
+            )
 
         session = self._get_or_create_session(session_id)
         session.messages.append(("user", normalized_message))
+        self._trim_history(session)
 
         if self._is_follow_up(normalized_message) and session.last_fact_check is not None:
             response = self._build_follow_up_response(session, normalized_message)
@@ -74,7 +82,14 @@ class ChatService:
             )
 
         session.messages.append(("assistant", response.answer))
+        self._trim_history(session)
         return response
+
+    @staticmethod
+    def _trim_history(session: ChatSession) -> None:
+        """Keep only the most recent messages so history stays bounded."""
+        if len(session.messages) > MAX_HISTORY_MESSAGES:
+            session.messages = session.messages[-MAX_HISTORY_MESSAGES:]
 
     def _get_or_create_session(self, session_id: str | None) -> ChatSession:
         if session_id and session_id in self._sessions:
