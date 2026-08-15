@@ -1,5 +1,5 @@
-<<<<<<< HEAD
 # AI-Powered Fake News Detector — RAG Module (Member 2)
+
 
 Retrieval-Augmented Generation (RAG) and evidence layer for the hackathon project.
 This module retrieves real sources, extracts supporting/contradicting evidence,
@@ -327,7 +327,114 @@ pytest tests/test_retriever.py -v
 pytest tests/test_evidence.py -v
 pytest tests/test_verifier.py -v
 pytest tests/test_explainer.py -v
+pytest tests/test_chatbot.py -v
 ```
+
+---
+
+## Step 8 — Fact-Checking Chatbot
+
+### How it works
+
+The chatbot reuses the existing Step 6 `RAGPipeline` and Step 7 FastAPI backend.
+A user sends a natural-language claim through `POST /chat`. The backend runs the
+same retrieval → evidence → verification → explanation flow as `/api/fact-check`.
+
+For short follow-up questions such as `"Why?"` or `"What evidence?"`, the chatbot
+returns a follow-up answer from the **cached last fact-check result** in the session.
+Conversation history does **not** override or replace retrieved evidence.
+
+### API endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/chat` | Minimal chat UI |
+| `POST` | `/chat` | Chatbot fact-check API |
+| `POST` | `/api/fact-check` | Existing direct fact-check API |
+
+### Request format
+
+```json
+{
+  "message": "India won the 2026 FIFA World Cup.",
+  "session_id": "optional-existing-session-id"
+}
+```
+
+### Response format
+
+```json
+{
+  "session_id": "f8b2c1a0-...",
+  "message": "India won the 2026 FIFA World Cup.",
+  "verdict": "CONTRADICTED",
+  "confidence": 0.92,
+  "answer": "The claim appears contradicted by the retrieved evidence. ...",
+  "explanation": "The claim is likely false because ...",
+  "supporting_evidence": [],
+  "contradicting_evidence": [
+    {
+      "text": "India has never won the FIFA World Cup.",
+      "source": "Snopes",
+      "url": "https://www.snopes.com/fact-check/india-world-cup",
+      "title": "India World Cup claim",
+      "relevance_score": 0.88,
+      "stance": "contradicting"
+    }
+  ],
+  "neutral_evidence": [],
+  "sources": [
+    {
+      "url": "https://www.snopes.com/fact-check/india-world-cup",
+      "title": "India World Cup claim",
+      "publisher": null
+    }
+  ],
+  "is_follow_up": false
+}
+```
+
+Verdict values follow the existing backend mapping:
+
+- `SUPPORTED`
+- `CONTRADICTED`
+- `MIXED`
+- `UNVERIFIED`
+
+### Run the chatbot locally
+
+From the project root:
+
+```bash
+.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Then open:
+
+- Chat UI: [http://127.0.0.1:8000/chat](http://127.0.0.1:8000/chat)
+- API docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat ^
+  -H "Content-Type: application/json" ^
+  -d "{\"message\": \"India won the 2026 FIFA World Cup.\"}"
+```
+
+### Frontend
+
+A minimal demo UI lives in `static/`:
+
+- `static/index.html`
+- `static/app.js`
+- `static/style.css`
+
+It connects to `POST /chat`, shows verdict, evidence, sources, loading state, and errors.
+No API keys are exposed in frontend code.
 
 ## Status
 
@@ -337,7 +444,6 @@ pytest tests/test_explainer.py -v
 | Evidence extraction (Step 3) | ✅ Implemented |
 | Evidence verification (Step 4) | ✅ Implemented |
 | LLM explanation (Step 5) | ✅ Implemented |
-| Full RAG pipeline (Step 6) | Not started |
-=======
-# hackathon_project
->>>>>>> d43afd45bf4a17e6539eb87efe0a296706d8a09e
+| Full RAG pipeline (Step 6) | ✅ Implemented |
+| Backend/API integration (Step 7) | ✅ Implemented |
+| Fact-checking chatbot (Step 8) | ✅ Implemented |

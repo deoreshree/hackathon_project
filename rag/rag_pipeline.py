@@ -234,36 +234,28 @@ class RAGPipeline:
         """Generate an explanation grounded in verified evidence."""
 
         if hasattr(self.explainer, "explain"):
-            try:
-                return self.explainer.explain(
-                    claim,
-                    evidence,
-                    verification,
-                )
-            except TypeError:
+            for args in (
+                (claim, verification),
+                (claim, evidence, verification),
+                (claim, evidence),
+                (claim,),
+            ):
                 try:
-                    return self.explainer.explain(
-                        claim,
-                        evidence,
-                    )
+                    return self.explainer.explain(*args)
                 except TypeError:
-                    return self.explainer.explain(claim)
+                    continue
 
         if hasattr(self.explainer, "generate"):
-            try:
-                return self.explainer.generate(
-                    claim,
-                    evidence,
-                    verification,
-                )
-            except TypeError:
+            for args in (
+                (claim, verification),
+                (claim, evidence, verification),
+                (claim, evidence),
+                (claim,),
+            ):
                 try:
-                    return self.explainer.generate(
-                        claim,
-                        evidence,
-                    )
+                    return self.explainer.generate(*args)
                 except TypeError:
-                    return self.explainer.generate(claim)
+                    continue
 
         if hasattr(self.explainer, "run"):
             return self.explainer.run(

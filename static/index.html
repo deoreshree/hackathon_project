@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Fake News Detector — Chat</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>Fact-Checking Chatbot</h1>
+      <p>Enter a news claim to retrieve evidence and get a grounded verdict.</p>
+    </header>
+
+    <main id="chat-area" class="chat-area" aria-live="polite"></main>
+
+    <section id="error-banner" class="error-banner hidden" role="alert"></section>
+
+    <form id="chat-form" class="chat-form">
+      <textarea
+        id="message-input"
+        rows="2"
+        maxlength="5000"
+        placeholder="Example: India won the 2026 FIFA World Cup."
+        required
+      ></textarea>
+      <button id="send-button" type="submit">Send</button>
+    </form>
+
+    <div id="loading-indicator" class="loading hidden">Checking claim...</div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
