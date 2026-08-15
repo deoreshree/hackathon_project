@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI-Powered Fake News Detector — RAG Module (Member 2)
 
 Retrieval-Augmented Generation (RAG) and evidence layer for the hackathon project.
@@ -337,3 +338,6 @@ pytest tests/test_explainer.py -v
 | Evidence verification (Step 4) | ✅ Implemented |
 | LLM explanation (Step 5) | ✅ Implemented |
 | Full RAG pipeline (Step 6) | Not started |
+=======
+# hackathon_project
+>>>>>>> d43afd45bf4a17e6539eb87efe0a296706d8a09e
