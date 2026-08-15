@@ -1,0 +1,31 @@
+# Secrets — never into an image
+.env
+.env.local
+
+# Local tooling / version control
+.venv/
+venv/
+env/
+.git/
+.freebuff/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs and temp files
+*.log
+server_*.log
+
+# Not needed at runtime
+tests/
+README.md
+DEMO.md
+render.yaml
+railway.toml
+Dockerfile
+.dockerignore

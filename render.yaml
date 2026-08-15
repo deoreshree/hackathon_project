@@ -1,0 +1,36 @@
+# Render Blueprint — one-click deploy for the AI Fake News Detector.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Usage:
+#   1. Push this repo to GitHub.
+#   2. In Render: New -> Blueprint -> connect the repo.
+#   3. In the Render dashboard, set the secret env vars marked `sync: false`
+#      (TAVILY_API_KEY, SERPER_API_KEY, OPENAI_API_KEY, GROQ_API_KEY).
+services:
+  - type: web
+    name: ai-fake-news-detector
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: RETRIEVAL_PROVIDER
+        value: tavily
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "120"
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
+      - key: CORS_ORIGINS
+        value: "*"
+      # Secrets: fill these in the Render dashboard after first deploy.
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: SERPER_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
