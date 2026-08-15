@@ -592,9 +592,11 @@ def test_noop_provider_raises_llm_error() -> None:
 
 
 def test_create_llm_provider_no_keys_returns_noop(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("GROQ_API_KEY", raising=False)
-    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    # Pin to empty (not delete) so load_dotenv() cannot re-populate the values
+    # from a developer's local .env — keeps the test hermetic with real keys set.
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("GROQ_API_KEY", "")
+    monkeypatch.setenv("LLM_PROVIDER", "")
 
     provider = create_llm_provider()
     assert isinstance(provider, NoOpLLMProvider)
@@ -602,17 +604,17 @@ def test_create_llm_provider_no_keys_returns_noop(monkeypatch: pytest.MonkeyPatc
 
 def test_create_llm_provider_with_openai_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key-openai")
-    monkeypatch.delenv("GROQ_API_KEY", raising=False)
-    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("GROQ_API_KEY", "")
+    monkeypatch.setenv("LLM_PROVIDER", "")
 
     provider = create_llm_provider()
     assert isinstance(provider, OpenAICompatibleProvider)
 
 
 def test_create_llm_provider_with_groq_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "")
     monkeypatch.setenv("GROQ_API_KEY", "gsk-test-key-groq")
-    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("LLM_PROVIDER", "")
 
     provider = create_llm_provider()
     assert isinstance(provider, OpenAICompatibleProvider)
