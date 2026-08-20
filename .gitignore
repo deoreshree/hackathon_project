@@ -16,6 +16,9 @@ build/
 venv/
 env/
 
+# FarmLink runtime data (auto-seeded on first run)
+farmlink/data/
+
 # Testing / tooling
 .pytest_cache/
 .mypy_cache/

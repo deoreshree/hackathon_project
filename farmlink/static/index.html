@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b3d2e" />
+  <meta name="description" content="FarmLink — direct farmer-to-consumer marketplace with AI assistance." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
+  <title>FarmLink — Farmer-to-Consumer Marketplace</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon">🌾</span>
+      <div>
+        <h1>FarmLink</h1>
+        <p class="tagline" data-i18n="tagline">Direct from farm to you</p>
+      </div>
+    </div>
+
+    <div class="topbar-controls">
+      <div class="role-toggle" role="group" aria-label="Role">
+        <button class="role-btn active" data-role="buyer" data-i18n="buyer">Buyer</button>
+        <button class="role-btn" data-role="farmer" data-i18n="farmer">Farmer</button>
+      </div>
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="mr">मराठी</button>
+        <button class="lang-btn" data-lang="hi">हिंदी</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="market" data-i18n="market">Market</button>
+    <button class="tab" data-tab="sell" data-i18n="sell">Sell</button>
+    <button class="tab" data-tab="orders" data-i18n="orders">Orders</button>
+    <button class="tab" data-tab="assistant" data-i18n="assistant">AI Assistant</button>
+  </nav>
+
+  <main>
+    <!-- MARKET -->
+    <section id="tab-market" class="tab-panel active">
+      <div class="market-controls">
+        <input id="search-input" type="search" data-i18n-ph="search_ph" placeholder="Search products…" />
+        <div id="category-chips" class="chips"></div>
+      </div>
+      <div id="product-grid" class="product-grid"></div>
+      <div id="market-empty" class="empty-state hidden">
+        <p data-i18n="no_products">No products found.</p>
+      </div>
+    </section>
+
+    <!-- SELL -->
+    <section id="tab-sell" class="tab-panel">
+      <div class="card">
+        <h2 data-i18n="list_product">List a product</h2>
+        <form id="sell-form" class="form-grid">
+          <label>
+            <span data-i18n="f_name">Product name</span>
+            <input name="name" maxlength="80" required />
+          </label>
+          <label>
+            <span data-i18n="f_category">Category</span>
+            <input name="category" maxlength="40" placeholder="Vegetables" />
+          </label>
+          <label>
+            <span data-i18n="f_price">Price (₹)</span>
+            <input name="price" type="number" min="0.01" step="0.01" required />
+          </label>
+          <label>
+            <span data-i18n="f_qty">Quantity</span>
+            <input name="quantity" type="number" min="0.01" step="0.01" required />
+          </label>
+          <label>
+            <span data-i18n="f_unit">Unit</span>
+            <input name="unit" maxlength="20" value="kg" />
+          </label>
+          <label>
+            <span data-i18n="f_farmer">Your name</span>
+            <input name="farmer" maxlength="80" required />
+          </label>
+          <label class="full">
+            <span data-i18n="f_desc">Description</span>
+            <textarea name="description" maxlength="2000" rows="3"></textarea>
+          </label>
+          <div class="form-actions full">
+            <button type="button" id="ai-describe" class="btn ai" data-i18n="ai_describe">✨ AI describe</button>
+            <button type="button" id="ai-price" class="btn ai" data-i18n="ai_price">✨ AI suggest price</button>
+            <button type="submit" class="btn primary" data-i18n="list_btn">List product</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <h2 data-i18n="my_listings">My listings</h2>
+        <div id="my-listings" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section id="tab-orders" class="tab-panel">
+      <div id="orders-list" class="orders-list"></div>
+      <div id="orders-empty" class="empty-state hidden">
+        <p data-i18n="no_orders">No orders yet.</p>
+      </div>
+    </section>
+
+    <!-- ASSISTANT -->
+    <section id="tab-assistant" class="tab-panel">
+      <div class="chat-card">
+        <div id="chat-log" class="chat-log"></div>
+        <div class="chat-quick" id="chat-quick"></div>
+        <form id="chat-form" class="chat-form">
+          <input id="chat-input" data-i18n-ph="chat_ph" placeholder="Ask about products, selling, or your order…" maxlength="2000" />
+          <button type="submit" class="btn primary" data-i18n="send">Send</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- CART FAB -->
+  <button id="cart-fab" class="cart-fab hidden" title="Cart">
+    🛒 <span id="cart-count">0</span>
+  </button>
+
+  <!-- CHECKOUT MODAL -->
+  <div id="checkout-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h2 data-i18n="checkout">Checkout</h2>
+      <div id="cart-items" class="cart-items"></div>
+      <form id="checkout-form" class="form-grid">
+        <label>
+          <span data-i18n="checkout_name">Your name</span>
+          <input name="buyer" maxlength="80" required />
+        </label>
+        <label>
+          <span data-i18n="f_phone">Phone</span>
+          <input name="phone" maxlength="20" required />
+        </label>
+        <label class="full">
+          <span data-i18n="f_address">Delivery address</span>
+          <textarea name="address" maxlength="500" rows="2" required></textarea>
+        </label>
+        <div class="full">
+          <span class="field-label" data-i18n="pay_method">Payment method</span>
+          <div class="pay-methods" id="pay-methods">
+            <label class="pay-option">
+              <input type="radio" name="payment_method" value="upi" checked />
+              <span>📱 <b data-i18n="pay_upi">UPI</b><small data-i18n="pay_upi_sub">GPay · PhonePe · Paytm</small></span>
+            </label>
+            <label class="pay-option">
+              <input type="radio" name="payment_method" value="card" />
+              <span>💳 <b data-i18n="pay_card">Card</b><small data-i18n="pay_card_sub">Credit / debit</small></span>
+            </label>
+            <label class="pay-option">
+              <input type="radio" name="payment_method" value="cod" />
+              <span>💵 <b data-i18n="pay_cod">Cash on delivery</b><small data-i18n="pay_cod_sub">Pay when it arrives</small></span>
+            </label>
+          </div>
+        </div>
+        <div class="form-actions full">
+          <button type="button" id="checkout-cancel" class="btn" data-i18n="cancel">Cancel</button>
+          <button type="submit" class="btn primary" data-i18n="place_order">Place order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

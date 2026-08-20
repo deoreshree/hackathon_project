@@ -1,0 +1,20 @@
+{
+  "name": "FarmLink — Farmer-to-Consumer Marketplace",
+  "short_name": "FarmLink",
+  "description": "Direct farmer-to-consumer marketplace with AI assistance.",
+  "start_url": "/ui",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b3d2e",
+  "theme_color": "#0b3d2e",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
